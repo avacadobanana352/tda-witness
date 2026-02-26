@@ -29,19 +29,43 @@ def _import_plotly():
 
 
 # ---------------------------------------------------------------------------
-# Colour palette
+# Dark theme palette
 # ---------------------------------------------------------------------------
 
+_BG       = "#0f0f1a"
+_GRID     = "#1e1e32"
+_TEXT     = "#c8c8e0"
+
 _COLORS = {
-    "points": "rgba(65, 105, 225, 0.7)",     # royal blue
-    "landmarks": "rgba(220, 50, 47, 0.9)",   # red
-    "edges": "rgba(130, 130, 130, 0.5)",      # grey
-    "triangles": "rgba(135, 206, 250, 0.25)", # light blue
-    "betti0": "#1f77b4",
-    "betti1": "#d62728",
-    "betti2": "#2ca02c",
-    "betti3": "#9467bd",
+    "points":    "rgba(80, 140, 255, 0.7)",   # blue
+    "landmarks": "rgba(255, 70, 120, 0.95)",  # pink-red
+    "edges":     "rgba(160, 160, 210, 0.45)", # grey-blue
+    "triangles": "rgba(80, 200, 255, 0.12)",  # faint cyan
+    "betti0":    "#00d4ff",   # electric cyan
+    "betti1":    "#ff2d78",   # hot pink
+    "betti2":    "#7eff5a",   # neon green
+    "betti3":    "#ffb700",   # amber
 }
+
+_BETTI_COLORS = [
+    _COLORS["betti0"], _COLORS["betti1"],
+    _COLORS["betti2"], _COLORS["betti3"],
+]
+
+_DARK_LAYOUT = dict(
+    paper_bgcolor=_BG,
+    plot_bgcolor=_BG,
+    font=dict(color=_TEXT, family="monospace"),
+    xaxis=dict(gridcolor=_GRID, linecolor=_GRID, zerolinecolor=_GRID),
+    yaxis=dict(gridcolor=_GRID, linecolor=_GRID, zerolinecolor=_GRID),
+)
+
+
+def _dark_layout(**extra):
+    """Merge dark base layout with caller overrides."""
+    layout = dict(_DARK_LAYOUT)
+    layout.update(extra)
+    return layout
 
 
 # ---------------------------------------------------------------------------
@@ -53,19 +77,7 @@ def plot_point_cloud(
     landmarks: np.ndarray | None = None,
     title: str | None = None,
 ) -> "go.Figure":
-    """Interactive scatter plot of a point cloud.
-
-    Parameters
-    ----------
-    data : np.ndarray, shape (n, 2) or (n, 3)
-    landmarks : np.ndarray or None
-        Indices of landmark points to highlight.
-    title : str or None
-
-    Returns
-    -------
-    plotly.graph_objects.Figure
-    """
+    """Interactive scatter plot of a point cloud."""
     go = _import_plotly()
     is_3d = data.shape[1] >= 3
     fig = go.Figure()
@@ -110,11 +122,10 @@ def plot_point_cloud(
                 name="Landmarks",
             ))
 
-    fig.update_layout(
+    fig.update_layout(**_dark_layout(
         title=title or "Point Cloud",
-        template="plotly_white",
         showlegend=True,
-    )
+    ))
     if not is_3d:
         fig.update_yaxes(scaleanchor="x", scaleratio=1)
     return fig
@@ -128,25 +139,7 @@ def plot_complex(
     title: str | None = None,
     show_triangles: bool = True,
 ) -> "go.Figure":
-    """Visualize the simplicial complex overlaid on the point cloud.
-
-    Parameters
-    ----------
-    data : np.ndarray, shape (n, 2) or (n, 3)
-    landmarks : np.ndarray
-        Landmark indices.
-    graph : np.ndarray
-        Adjacency matrix.
-    complex_ : list of np.ndarray
-        k-skeleton from ``compute_vr_complex``.
-    title : str or None
-    show_triangles : bool
-        Whether to draw filled 2-simplices.
-
-    Returns
-    -------
-    plotly.graph_objects.Figure
-    """
+    """Visualize the simplicial complex overlaid on the point cloud."""
     go = _import_plotly()
     lm_coords = data[landmarks]
     is_3d = data.shape[1] >= 3
@@ -165,8 +158,7 @@ def plot_complex(
                 x=ex, y=ey, z=ez,
                 mode="lines",
                 line=dict(color=_COLORS["edges"], width=2),
-                name="Edges",
-                hoverinfo="skip",
+                name="Edges", hoverinfo="skip",
             ))
         else:
             ex, ey = [], []
@@ -177,8 +169,7 @@ def plot_complex(
                 x=ex, y=ey,
                 mode="lines",
                 line=dict(color=_COLORS["edges"], width=1.5),
-                name="Edges",
-                hoverinfo="skip",
+                name="Edges", hoverinfo="skip",
             ))
 
     # Layer 2: triangles (2-simplices)
@@ -188,10 +179,9 @@ def plot_complex(
             fig.add_trace(go.Mesh3d(
                 x=lm_coords[:, 0], y=lm_coords[:, 1], z=lm_coords[:, 2],
                 i=triangles[:, 0], j=triangles[:, 1], k=triangles[:, 2],
-                opacity=0.2,
-                color="lightblue",
-                name="Triangles",
-                hoverinfo="skip",
+                opacity=0.18,
+                color=_COLORS["betti2"],
+                name="Triangles", hoverinfo="skip",
             ))
         else:
             first = True
@@ -245,11 +235,10 @@ def plot_complex(
             name="Landmarks",
         ))
 
-    fig.update_layout(
+    fig.update_layout(**_dark_layout(
         title=title or "Simplicial Complex",
-        template="plotly_white",
         showlegend=True,
-    )
+    ))
     if not is_3d:
         fig.update_yaxes(scaleanchor="x", scaleratio=1)
     return fig
@@ -266,21 +255,7 @@ def plot_filtration(
     seed: int | None = None,
     title: str | None = None,
 ) -> "go.Figure":
-    """Animated filtration: a slider sweeps through threshold values.
-
-    Parameters
-    ----------
-    data : np.ndarray, shape (n, 2) or (n, 3)
-    thresholds : array-like of float
-        R values to sweep.
-    n_landmarks, simplex_dim, witness_param, normalize, seed
-        Forwarded to ``tda.analyze``.
-    title : str or None
-
-    Returns
-    -------
-    plotly.graph_objects.Figure
-    """
+    """Animated filtration: a slider sweeps through threshold values."""
     go = _import_plotly()
     from tda.preprocessing import normalize_data, get_landmarks, pairwise_distances
     from tda.complex.witness import build_witness_graph
@@ -292,7 +267,6 @@ def plot_filtration(
     thresholds = np.asarray(thresholds, dtype=float)
     is_3d = data.shape[1] >= 3
 
-    # Precompute threshold-independent work once
     if normalize:
         data = normalize_data(data)
     n_points = data.shape[0]
@@ -303,7 +277,6 @@ def plot_filtration(
     distances = pairwise_distances(data[landmarks], data)
     lm_coords = data[landmarks]
 
-    # Pre-compute for each threshold
     frames = []
     slider_steps = []
 
@@ -317,7 +290,6 @@ def plot_filtration(
             betti = betti[:-1]
         betti_str = ", ".join(f"B{i}={b}" for i, b in enumerate(betti))
 
-        # Build edge traces
         edge_rows, edge_cols = np.where(np.triu(graph) == 1)
         traces = []
 
@@ -361,8 +333,7 @@ def plot_filtration(
                 marker=dict(size=9, color=_COLORS["landmarks"], symbol="diamond"),
             ))
 
-        frame = go.Frame(data=traces, name=str(idx))
-        frames.append(frame)
+        frames.append(go.Frame(data=traces, name=str(idx)))
         slider_steps.append(dict(
             method="animate",
             args=[[str(idx)], dict(mode="immediate",
@@ -371,19 +342,19 @@ def plot_filtration(
             label=f"R={R:.3f}  ({betti_str})",
         ))
 
-    # Initial figure = first frame
     fig = go.Figure(data=frames[0].data, frames=frames)
-    fig.update_layout(
+    fig.update_layout(**_dark_layout(
         title=title or "Filtration",
-        template="plotly_white",
         sliders=[dict(
             active=0,
             steps=slider_steps,
-            currentvalue=dict(prefix="", visible=True),
+            currentvalue=dict(prefix="", visible=True, font=dict(color=_TEXT)),
+            bgcolor=_GRID,
+            bordercolor=_GRID,
             pad=dict(t=50),
         )],
         showlegend=False,
-    )
+    ))
     if not is_3d:
         fig.update_yaxes(scaleanchor="x", scaleratio=1)
     return fig
@@ -394,25 +365,10 @@ def plot_betti_summary(
     betti_sequences: list[list[int]],
     title: str | None = None,
 ) -> "go.Figure":
-    """Step plot of Betti numbers vs. threshold *R*.
-
-    Parameters
-    ----------
-    thresholds : array-like of float
-    betti_sequences : list of list of int
-        ``betti_sequences[i]`` is the Betti vector at ``thresholds[i]``.
-    title : str or None
-
-    Returns
-    -------
-    plotly.graph_objects.Figure
-    """
+    """Step plot of Betti numbers vs. threshold R."""
     go = _import_plotly()
     thresholds = np.asarray(thresholds)
     max_dim = max(len(b) for b in betti_sequences)
-
-    color_cycle = [_COLORS["betti0"], _COLORS["betti1"],
-                   _COLORS["betti2"], _COLORS["betti3"]]
 
     fig = go.Figure()
     for d in range(max_dim):
@@ -420,18 +376,17 @@ def plot_betti_summary(
         fig.add_trace(go.Scatter(
             x=thresholds, y=values,
             mode="lines+markers",
-            line=dict(shape="hv", color=color_cycle[d % len(color_cycle)], width=2),
-            marker=dict(size=5),
-            name=f"Betti-{d}",
+            line=dict(shape="hv", color=_BETTI_COLORS[d % len(_BETTI_COLORS)], width=2),
+            marker=dict(size=5, color=_BETTI_COLORS[d % len(_BETTI_COLORS)]),
+            name=f"β{d}",
         ))
 
-    fig.update_layout(
+    fig.update_layout(**_dark_layout(
         title=title or "Betti Numbers vs. Threshold",
         xaxis_title="Threshold (R)",
-        yaxis_title="Betti Number",
-        template="plotly_white",
+        yaxis_title="Betti number",
         showlegend=True,
-    )
+    ))
     return fig
 
 
@@ -439,42 +394,25 @@ def plot_persistence_diagram(
     pairs: list[dict],
     title: str | None = None,
 ) -> "go.Figure":
-    """Persistence diagram: birth vs. death scatter plot.
-
-    Parameters
-    ----------
-    pairs : list of dict
-        Each dict has keys ``"dim"``, ``"birth"``, ``"death"``
-        (as returned by ``compute_persistence``).
-    title : str or None
-
-    Returns
-    -------
-    plotly.graph_objects.Figure
-    """
+    """Persistence diagram: birth vs. death scatter plot."""
     go = _import_plotly()
     import math
 
-    color_cycle = [_COLORS["betti0"], _COLORS["betti1"],
-                   _COLORS["betti2"], _COLORS["betti3"]]
-
-    # Determine axis limits — cap infinity at a visible value
     finite_vals = [p["death"] for p in pairs if not math.isinf(p["death"])]
     all_births = [p["birth"] for p in pairs]
     max_val = max(finite_vals + all_births) if (finite_vals or all_births) else 1.0
-    cap = max_val * 1.3  # extra room for infinity markers
+    cap = max_val * 1.3
 
     fig = go.Figure()
 
-    # Diagonal reference line
+    # Diagonal reference
     fig.add_trace(go.Scatter(
         x=[0, cap], y=[0, cap],
         mode="lines",
-        line=dict(color="lightgrey", dash="dash", width=1),
+        line=dict(color="#333355", dash="dash", width=1),
         showlegend=False, hoverinfo="skip",
     ))
 
-    # Group by dimension
     dims = sorted(set(p["dim"] for p in pairs))
     for d in dims:
         dim_pairs = [p for p in pairs if p["dim"] == d]
@@ -489,31 +427,31 @@ def plot_persistence_diagram(
             f"lifetime={lt}"
             for b, de, inf, lt in zip(births, deaths, is_inf, lifetimes)
         ]
-
-        symbols = ["diamond" if inf else "circle" for inf in is_inf]
+        color = _BETTI_COLORS[d % len(_BETTI_COLORS)]
 
         fig.add_trace(go.Scatter(
             x=births, y=deaths,
             mode="markers",
             marker=dict(
-                size=8,
-                color=color_cycle[d % len(color_cycle)],
-                symbol=symbols,
-                line=dict(width=1, color="white"),
+                size=9,
+                color=color,
+                symbol=["diamond" if inf else "circle" for inf in is_inf],
+                line=dict(width=1, color=_BG),
             ),
             hovertext=hover, hoverinfo="text",
             name=f"H{d}",
         ))
 
-    fig.update_layout(
+    fig.update_layout(**_dark_layout(
         title=title or "Persistence Diagram",
         xaxis_title="Birth",
         yaxis_title="Death",
-        template="plotly_white",
+        xaxis=dict(gridcolor=_GRID, linecolor=_GRID, zerolinecolor=_GRID,
+                   range=[-max_val * 0.05, cap]),
+        yaxis=dict(gridcolor=_GRID, linecolor=_GRID, zerolinecolor=_GRID,
+                   range=[-max_val * 0.05, cap]),
         showlegend=True,
-        xaxis=dict(range=[-max_val * 0.05, cap]),
-        yaxis=dict(range=[-max_val * 0.05, cap]),
-    )
+    ))
     fig.update_yaxes(scaleanchor="x", scaleratio=1)
     return fig
 
@@ -523,7 +461,7 @@ def plot_barcode(
     title: str | None = None,
     min_lifetime: float = 0.0,
 ):
-    """Persistence barcode using matplotlib (compact, fast).
+    """Persistence barcode — one horizontal line per feature.
 
     Parameters
     ----------
@@ -532,75 +470,75 @@ def plot_barcode(
     title : str or None
     min_lifetime : float
         Hide bars shorter than this (filters noise).
-
-    Returns
-    -------
-    matplotlib.figure.Figure
     """
     import math
     import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
 
-    colors = {0: "#1f77b4", 1: "#d62728", 2: "#2ca02c", 3: "#9467bd"}
+    neon = {0: _COLORS["betti0"], 1: _COLORS["betti1"],
+            2: _COLORS["betti2"], 3: _COLORS["betti3"]}
 
     # Cap infinity
     finite_vals = [p["death"] for p in pairs if not math.isinf(p["death"])]
     all_births = [p["birth"] for p in pairs]
     max_val = max(finite_vals + all_births) if (finite_vals or all_births) else 1.0
-    cap = max_val * 1.2
+    cap = max_val * 1.15
 
-    # Sort by dimension, then lifetime (longest first)
-    sorted_pairs = sorted(
-        pairs,
+    # Filter noise, sort by dim then lifetime descending
+    filtered = sorted(
+        (p for p in pairs
+         if math.isinf(p["death"]) or (p["death"] - p["birth"]) >= min_lifetime),
         key=lambda p: (p["dim"], -(p["death"] - p["birth"])
                        if not math.isinf(p["death"]) else -float("inf")),
     )
 
-    # Filter noise
-    sorted_pairs = [
-        p for p in sorted_pairs
-        if math.isinf(p["death"])
-        or (p["death"] - p["birth"]) >= min_lifetime
-    ]
+    dims = sorted(set(p["dim"] for p in filtered))
 
-    dims = sorted(set(p["dim"] for p in sorted_pairs))
-    fig, ax = plt.subplots(figsize=(6, 3))
+    fig, ax = plt.subplots(figsize=(7, max(2.5, len(filtered) * 0.18 + 1)))
+    fig.patch.set_facecolor(_BG)
+    ax.set_facecolor(_BG)
 
     y = 0
-    dim_centers = {}
+    dim_label_pos = {}
     for d in dims:
-        dim_pairs = [p for p in sorted_pairs if p["dim"] == d]
+        dim_pairs = [p for p in filtered if p["dim"] == d]
+        color = neon.get(d, "#aaaaaa")
         y_start = y
         births = [p["birth"] for p in dim_pairs]
         deaths = [min(p["death"], cap) for p in dim_pairs]
         ys = list(range(y, y + len(dim_pairs)))
-        ax.hlines(ys, births, deaths, colors=colors.get(d, "#333"),
-                  linewidth=2, label=f"$H_{d}$")
+        ax.hlines(ys, births, deaths,
+                  colors=color, linewidth=1.5, alpha=0.9)
         # Arrow for infinite bars
         for i, p in enumerate(dim_pairs):
             if math.isinf(p["death"]):
-                ax.plot(cap, y + i, ">", color=colors.get(d, "#333"), markersize=5)
-        dim_centers[d] = (y_start + y + len(dim_pairs) - 1) / 2
-        y += len(dim_pairs) + 1  # gap between dimensions
+                ax.annotate("", xy=(cap + 0.01 * cap, y + i),
+                            xytext=(cap, y + i),
+                            arrowprops=dict(arrowstyle="->", color=color, lw=1.2))
+        dim_label_pos[d] = (y_start + y + len(dim_pairs) - 1) / 2
+        y += len(dim_pairs) + 2  # gap between dimension groups
 
-    ax.set_yticks(list(dim_centers.values()))
-    ax.set_yticklabels([f"$H_{d}$" for d in dim_centers])
-    ax.set_xlabel("Filtration value")
-    ax.set_title(title or "Persistence Barcode", fontsize=12)
-    ax.legend(loc="lower right", fontsize=9)
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
+    ax.set_yticks(list(dim_label_pos.values()))
+    ax.set_yticklabels([f"$H_{d}$" for d in dim_label_pos],
+                       color=_TEXT, fontsize=11)
+    ax.set_xlabel("Filtration value", color=_TEXT, fontsize=10)
+    ax.set_title(title or "Persistence Barcode", color=_TEXT, fontsize=12, pad=10)
+    ax.tick_params(colors=_TEXT, labelsize=9)
+    for spine in ax.spines.values():
+        spine.set_edgecolor(_GRID)
+    ax.set_xlim(-cap * 0.02, cap * 1.08)
+
+    # Legend patches
+    patches = [mpatches.Patch(color=neon.get(d, "#aaa"), label=f"$H_{d}$")
+               for d in dims]
+    ax.legend(handles=patches, loc="lower right", fontsize=9,
+              facecolor=_GRID, edgecolor="none", labelcolor=_TEXT)
+
     plt.tight_layout()
     plt.show()
     return fig
 
 
 def save_html(fig: "go.Figure", path: str) -> None:
-    """Save a Plotly figure as a standalone HTML file.
-
-    Parameters
-    ----------
-    fig : plotly.graph_objects.Figure
-    path : str
-        Output file path.
-    """
+    """Save a Plotly figure as a standalone HTML file."""
     fig.write_html(path, include_plotlyjs="cdn")
