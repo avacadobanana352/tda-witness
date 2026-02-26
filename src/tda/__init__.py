@@ -114,6 +114,15 @@ def analyze(
     boundary_mats = compute_boundary_matrices(complex_, n_levels)
     betti = compute_betti_numbers(boundary_mats)
 
+    # The highest Betti number (beta_d for simplex_dim=d) is unreliable
+    # when the complex hit the requested ceiling: without (d+1)-simplices,
+    # beta_d counts ALL d-cycles as surviving, inflating the result.
+    # Only drop when achieved_dim == simplex_dim (the complex may have
+    # more simplices we didn't compute).  When the complex stopped early
+    # (achieved_dim < simplex_dim), all Betti numbers are reliable.
+    if achieved_dim == simplex_dim and len(betti) > 1:
+        betti = betti[:-1]
+
     return {
         "betti": betti,
         "graph": graph,

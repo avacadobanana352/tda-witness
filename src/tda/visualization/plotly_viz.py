@@ -282,28 +282,40 @@ def plot_filtration(
     plotly.graph_objects.Figure
     """
     go = _import_plotly()
-    from tda import analyze
+    from scipy.spatial.distance import cdist
+    from tda.preprocessing import normalize_data, get_landmarks
+    from tda.complex.witness import build_witness_graph
+    from tda.complex.vietoris_rips import compute_vr_complex
+    from tda.homology.boundary import compute_boundary_matrices
+    from tda.homology.betti import compute_betti_numbers
 
+    data = np.asarray(data, dtype=float)
     thresholds = np.asarray(thresholds, dtype=float)
     is_3d = data.shape[1] >= 3
+
+    # Precompute threshold-independent work once
+    if normalize:
+        data = normalize_data(data)
+    n_points = data.shape[0]
+    if n_landmarks is None:
+        n_landmarks = n_points
+    rng = np.random.default_rng(seed)
+    landmarks = get_landmarks(data, n_landmarks, rng=rng)
+    distances = cdist(data[landmarks], data, metric="euclidean")
+    lm_coords = data[landmarks]
 
     # Pre-compute for each threshold
     frames = []
     slider_steps = []
 
     for idx, R in enumerate(thresholds):
-        result = analyze(
-            data,
-            n_landmarks=n_landmarks,
-            simplex_dim=simplex_dim,
-            threshold=float(R),
-            witness_param=witness_param,
-            normalize=normalize,
-            seed=seed,
-        )
-        lm_coords = result["data"][result["landmarks"]]
-        graph = result["graph"]
-        betti = result["betti"]
+        graph = build_witness_graph(distances, float(R), witness_param)
+        complex_, achieved_dim = compute_vr_complex(graph, simplex_dim)
+        n_levels = len(complex_)
+        boundary_mats = compute_boundary_matrices(complex_, n_levels)
+        betti = compute_betti_numbers(boundary_mats)
+        if achieved_dim == simplex_dim and len(betti) > 1:
+            betti = betti[:-1]
         betti_str = ", ".join(f"B{i}={b}" for i, b in enumerate(betti))
 
         # Build edge traces
@@ -322,7 +334,7 @@ def plot_filtration(
                 hoverinfo="skip",
             ))
             traces.append(go.Scatter3d(
-                x=result["data"][:, 0], y=result["data"][:, 1], z=result["data"][:, 2],
+                x=data[:, 0], y=data[:, 1], z=data[:, 2],
                 mode="markers", marker=dict(size=3, color=_COLORS["points"]),
             ))
             traces.append(go.Scatter3d(
@@ -341,7 +353,7 @@ def plot_filtration(
                 hoverinfo="skip",
             ))
             traces.append(go.Scatter(
-                x=result["data"][:, 0], y=result["data"][:, 1],
+                x=data[:, 0], y=data[:, 1],
                 mode="markers", marker=dict(size=5, color=_COLORS["points"]),
             ))
             traces.append(go.Scatter(

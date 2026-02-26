@@ -4,13 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from tda.homology.smith_normal_form import snf_gf2
-
-
-def _rank_gf2(snf_matrix: np.ndarray) -> int:
-    """Count nonzero diagonal entries of an SNF matrix (= rank over GF(2))."""
-    diag_len = min(snf_matrix.shape)
-    return int(np.sum(np.diag(snf_matrix)[:diag_len] != 0))
+from tda.homology.smith_normal_form import rank_gf2
 
 
 def compute_betti_numbers(boundary_matrices: list[np.ndarray]) -> list[int]:
@@ -31,18 +25,15 @@ def compute_betti_numbers(boundary_matrices: list[np.ndarray]) -> list[int]:
     list of int
         Betti numbers ``[beta_0, beta_1, ..., beta_{n-1}]``.
     """
+    # Compute all ranks once up front — avoids the old code's redundant
+    # SNF computation where each intermediate boundary matrix was reduced
+    # twice (once as del_k, once as del_{k+1} for the previous dimension).
+    ranks = [rank_gf2(bm) for bm in boundary_matrices]
+
     betti: list[int] = []
-
     for k in range(len(boundary_matrices)):
-        snf_k = snf_gf2(boundary_matrices[k])
-        kernel_dim = snf_k.shape[1] - _rank_gf2(snf_k)
-
-        if k + 1 < len(boundary_matrices):
-            snf_above = snf_gf2(boundary_matrices[k + 1])
-            image_dim = _rank_gf2(snf_above)
-        else:
-            image_dim = 0
-
+        kernel_dim = boundary_matrices[k].shape[1] - ranks[k]
+        image_dim = ranks[k + 1] if k + 1 < len(ranks) else 0
         betti.append(kernel_dim - image_dim)
 
     return betti

@@ -28,7 +28,6 @@ def compute_boundary_matrix(
         Boundary matrix with entries in {-1, 0, 1}.
     """
     simplices = k_skeleton[simplex_dimension - 1]
-    last_vertex = simplex_dimension - 1
 
     # Boundary of 0-simplices is the zero map
     if simplex_dimension == 1:
@@ -37,21 +36,22 @@ def compute_boundary_matrix(
     faces = k_skeleton[simplex_dimension - 2]
     n_simplices = simplices.shape[0]
     n_faces = faces.shape[0]
-    boundary_matrix = np.zeros((n_faces, n_simplices))
+    k = simplices.shape[1]  # vertices per simplex
 
-    for face_idx in range(n_faces):
-        for simplex_idx in range(n_simplices):
-            face = faces[face_idx]
-            simplex = simplices[simplex_idx]
+    # Build face lookup: tuple(face) -> row index
+    face_lookup = {tuple(row): idx for idx, row in enumerate(faces)}
 
-            if simplex[0] > face[0]:
-                break
-            if face[last_vertex - 1] > simplex[last_vertex]:
-                continue
+    boundary_matrix = np.zeros((n_faces, n_simplices), dtype=int)
 
-            if np.all(np.isin(face, simplex)):
-                dropped_pos = np.where(~np.isin(simplex, face))[0][0]
-                boundary_matrix[face_idx, simplex_idx] = (-1) ** (dropped_pos % 2)
+    # For each simplex, generate its k faces by dropping one vertex at a time.
+    # This is O(n_simplices * k) instead of the original O(n_faces * n_simplices).
+    for j in range(n_simplices):
+        simplex = simplices[j]
+        for drop_pos in range(k):
+            face_key = tuple(np.delete(simplex, drop_pos))
+            face_idx = face_lookup.get(face_key)
+            if face_idx is not None:
+                boundary_matrix[face_idx, j] = (-1) ** (drop_pos % 2)
 
     return boundary_matrix
 

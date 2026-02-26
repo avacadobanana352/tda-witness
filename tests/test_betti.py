@@ -2,8 +2,8 @@
 
 import numpy as np
 
-from tda.homology.betti import compute_betti_numbers, _rank_gf2
-from tda.homology.smith_normal_form import snf_gf2
+from tda.homology.betti import compute_betti_numbers
+from tda.homology.smith_normal_form import snf_gf2, rank_gf2
 from tda.homology.boundary import compute_boundary_matrices
 from tda.complex.vietoris_rips import compute_vr_complex
 
@@ -16,10 +16,10 @@ def _full_graph(n):
 
 class TestRankGf2:
     def test_identity(self):
-        assert _rank_gf2(np.eye(3, dtype=int)) == 3
+        assert rank_gf2(np.eye(3, dtype=int)) == 3
 
     def test_zero(self):
-        assert _rank_gf2(np.zeros((3, 4), dtype=int)) == 0
+        assert rank_gf2(np.zeros((3, 4), dtype=int)) == 0
 
 
 class TestComputeBettiNumbers:
