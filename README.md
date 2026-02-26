@@ -60,7 +60,9 @@ Handwritten digits fall into three topological classes by $\beta_1$ (loop count)
 | 1 | 0, 4, 6, 9 |
 | 2 | 8 |
 
-Topology can't distinguish *within* a group — a 0 and a 4 are topologically identical. But $\beta_1$ is a robust, training-free feature that's invariant to stretching and noise.
+Topology can't distinguish *within* a group — a 0 and a 4 are topologically identical. A deep network classifies MNIST at ~99.7%; topology alone gives three classes, not ten.
+
+Where TDA adds value is not accuracy but **robustness and interpretability**: $\beta_1$ is invariant to continuous deformations (stretching, bending, slight noise) in a mathematically provable way. In practice it's used as an additional feature alongside standard ML — particularly useful for small datasets, anomaly detection, or domains where the shape of data is itself meaningful (molecular biology, materials science, neuroscience).
 
 ```python
 # convert a 28x28 digit image to a point cloud
