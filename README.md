@@ -2,6 +2,8 @@
 
 Minimal, from-scratch implementation of Topological Data Analysis in Python. Point cloud in, Betti numbers out. Vibe coded from the original [MATLAB learning code](https://www.mathworks.com/matlabcentral/fileexchange/47009-topological-data-analysis-learning-code).
 
+This is mainly intended as a learning tool for people who may be studying the topic. I still find this an interesting topic in math, so thought it'd be a good one to bring up to date with Claude.
+
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)
 
@@ -113,3 +115,4 @@ result = persistent_homology(data, simplex_dim=2)
 ## License
 
 MIT
+
