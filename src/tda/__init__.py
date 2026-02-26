@@ -199,7 +199,12 @@ def persistent_homology(
         distances, witness_param, simplex_dim,
     )
 
-    pairs = compute_persistence(simplices, birth_times, dimensions)
+    all_pairs = compute_persistence(simplices, birth_times, dimensions)
+
+    # Drop the top-dimension homology: with simplex_dim=k, H_k is
+    # artificially inflated because there are no (k+1)-simplices to
+    # kill k-cycles.  H_0 through H_{k-1} are computed correctly.
+    pairs = [p for p in all_pairs if p["dim"] < simplex_dim]
     barcodes = pairs_to_barcodes(pairs)
 
     return {
