@@ -6,6 +6,7 @@ This is mainly intended as a learning tool for people who may be studying the to
 
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/avacadobanana352/tda-witness/blob/main/examples/tda_witness_demo.ipynb)
 
 <p align="center">
   <img src="examples/filtration.gif" alt="Filtration animation — witness complex on a circle" width="480">
