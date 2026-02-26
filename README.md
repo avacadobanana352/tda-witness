@@ -62,7 +62,9 @@ Handwritten digits fall into three topological classes by $\beta_1$ (loop count)
 
 Topology can't distinguish *within* a group — a 0 and a 4 are topologically identical. A deep network classifies MNIST at ~99.7%; topology alone gives three classes, not ten.
 
-Where TDA adds value is not accuracy but **understanding the shape of your data**. It's fundamentally unsupervised — it describes the geometry of a point cloud without needing labels at all. Betti numbers and persistence diagrams tell you how many clusters, loops, and voids are present in your data, which can reveal structure that neither the labels nor the loss function ever encode. In practice, topological features are used alongside standard ML — particularly for small datasets, anomaly detection, or domains where shape is intrinsically meaningful (molecular biology, materials science, neuroscience).
+Where TDA adds value is not accuracy but **understanding the shape of your data**. It's fundamentally unsupervised — it describes the geometry of a point cloud without needing labels at all. Betti numbers and persistence diagrams tell you how many connected components, loops, and voids are present in the simplicial complex built from your data, which can reveal structure that neither the labels nor the loss function encode.
+
+A note on robustness: Betti numbers are invariant under homeomorphisms (continuous deformations that don't tear or glue — stretching, bending). They are *not* automatically immune to noise; noise can create or destroy topological features, which is precisely why persistent homology was invented. Persistence tracks which features survive across many scales, separating signal from noise-induced artifacts. In practice, topological features are used alongside standard ML in domains where the shape of data is intrinsically meaningful — molecular biology, materials science, neuroscience.
 
 ```python
 # convert a 28x28 digit image to a point cloud
