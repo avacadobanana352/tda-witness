@@ -1,0 +1,40 @@
+[project]
+name = "tda-witness"
+version = "0.2.0"
+description = "Topological Data Analysis: compute Betti numbers from point clouds via witness complexes"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [{name = "Adam C"}]
+keywords = ["topology", "TDA", "betti numbers", "witness complex", "simplicial complex", "point cloud"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+]
+
+[project.optional-dependencies]
+viz = ["plotly>=5.0"]
+cli = ["click>=8.0"]
+dev = ["pytest>=7.0", "pytest-cov", "plotly>=5.0", "click>=8.0"]
+all = ["tda-witness[viz,cli]"]
+
+[project.scripts]
+tda = "tda.cli:main"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
