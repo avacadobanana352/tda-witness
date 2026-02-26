@@ -9,7 +9,7 @@ This is mainly intended as a learning tool for people who may be studying the to
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/avacadobanana352/tda-witness/blob/main/examples/tda_witness_demo.ipynb)
 
 <p align="center">
-  <img src="examples/filtration.gif" alt="Filtration animation — witness complex on a circle" width="480">
+  <img src="examples/mnist8_filtration.gif" alt="Filtration on MNIST digit 8 — detecting two loops" width="420">
 </p>
 
 ## Install
