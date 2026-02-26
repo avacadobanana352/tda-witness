@@ -521,6 +521,7 @@ def plot_persistence_diagram(
 def plot_barcode(
     pairs: list[dict],
     title: str | None = None,
+    min_lifetime: float = 0.0,
 ) -> "go.Figure":
     """Persistence barcode: horizontal bars showing feature lifetimes.
 
@@ -529,6 +530,8 @@ def plot_barcode(
     pairs : list of dict
         Each dict has keys ``"dim"``, ``"birth"``, ``"death"``.
     title : str or None
+    min_lifetime : float
+        Hide bars shorter than this (filters noise).
 
     Returns
     -------
@@ -546,55 +549,88 @@ def plot_barcode(
     max_val = max(finite_vals + all_births) if (finite_vals or all_births) else 1.0
     cap = max_val * 1.2
 
+    # Sort by dimension, then by lifetime (longest first)
+    sorted_pairs = sorted(
+        pairs,
+        key=lambda p: (p["dim"], -(p["death"] - p["birth"])
+                       if not math.isinf(p["death"]) else -float("inf")),
+    )
+
+    # Filter short-lived bars
+    sorted_pairs = [
+        p for p in sorted_pairs
+        if math.isinf(p["death"])
+        or (p["death"] - p["birth"]) >= min_lifetime
+    ]
+
     fig = go.Figure()
-
-    # Sort by dimension then birth
-    sorted_pairs = sorted(pairs, key=lambda p: (p["dim"], p["birth"]))
-
-    y_pos = 0
-    y_labels = []
     dims = sorted(set(p["dim"] for p in sorted_pairs))
+
+    # One trace per dimension (fast, clean legend)
+    y_pos = 0
+    dim_start: dict[int, int] = {}  # dim -> first y position
 
     for d in dims:
         dim_pairs = [p for p in sorted_pairs if p["dim"] == d]
-        first = True
+        dim_start[d] = y_pos
+        color = color_cycle[d % len(color_cycle)]
+
+        # Build bar coordinates with None separators
+        xs: list[float | None] = []
+        ys: list[float | None] = []
+        hovers: list[str | None] = []
+
         for p in dim_pairs:
             birth = p["birth"]
             death = min(p["death"], cap)
             is_inf = math.isinf(p["death"])
-            color = color_cycle[d % len(color_cycle)]
+            lt = "inf" if is_inf else f"{p['death'] - birth:.4f}"
+            hover = f"H{d}: [{birth:.4f}, {'inf' if is_inf else f'{death:.4f}'})  lifetime={lt}"
 
-            fig.add_trace(go.Scatter(
-                x=[birth, death],
-                y=[y_pos, y_pos],
-                mode="lines+markers",
-                line=dict(color=color, width=4),
-                marker=dict(
-                    size=[0, 8 if is_inf else 0],
-                    symbol=["circle", "triangle-right" if is_inf else "circle"],
-                    color=color,
-                ),
-                legendgroup=f"H{d}",
-                name=f"H{d}" if first else "",
-                showlegend=first,
-                hovertext=f"H{d}: [{birth:.4f}, {'inf' if is_inf else f'{death:.4f}'})",
-                hoverinfo="text",
-            ))
-            first = False
-            y_labels.append(f"H{d}")
+            xs.extend([birth, death, None])
+            ys.extend([y_pos, y_pos, None])
+            hovers.extend([hover, hover, None])
             y_pos += 1
+
+        fig.add_trace(go.Scatter(
+            x=xs, y=ys,
+            mode="lines",
+            line=dict(color=color, width=5),
+            name=f"H{d}",
+            hovertext=hovers, hoverinfo="text",
+        ))
+
+        # Arrow markers for infinite bars
+        inf_xs = [min(p["death"], cap) for p in dim_pairs if math.isinf(p["death"])]
+        inf_ys = [dim_start[d] + i for i, p in enumerate(dim_pairs) if math.isinf(p["death"])]
+        if inf_xs:
+            fig.add_trace(go.Scatter(
+                x=inf_xs, y=inf_ys,
+                mode="markers",
+                marker=dict(size=8, symbol="triangle-right", color=color),
+                showlegend=False, hoverinfo="skip",
+            ))
+
+        y_pos += 1  # gap between dimensions
+
+    # Y-axis: one label per dimension group
+    tick_vals = [dim_start[d] + (y_pos - dim_start[d]) // 2 - 1
+                 for d in dims]
+    tick_text = [f"H{d}" for d in dims]
 
     fig.update_layout(
         title=title or "Persistence Barcode",
         xaxis_title="Filtration Value",
         yaxis=dict(
-            tickvals=list(range(len(y_labels))),
-            ticktext=y_labels,
+            tickvals=tick_vals,
+            ticktext=tick_text,
             title="",
+            showgrid=False,
         ),
         template="plotly_white",
         showlegend=True,
-        height=max(300, 20 * len(sorted_pairs) + 150),
+        height=400,
+        width=700,
     )
     return fig
 
