@@ -71,7 +71,11 @@ def make_torus(
     R: float = 2.0,
     r: float = 1.0,
 ) -> np.ndarray:
-    """Sample from a torus in R^3.
+    """Sample uniformly from a torus in R^3.
+
+    Uses rejection sampling so point density is uniform over the surface.
+    The area element is proportional to (R + r*cos(theta)), so naive
+    uniform (theta, phi) over-samples the inner equator.
 
     Parameters
     ----------
@@ -81,7 +85,20 @@ def make_torus(
     Expected topology (suitable threshold): Betti = [1, 2, 1].
     """
     rng = np.random.default_rng(seed)
-    theta = rng.uniform(0, 2 * np.pi, n_points)
+
+    # Rejection sampling for area-uniform theta
+    theta = np.empty(n_points)
+    count = 0
+    while count < n_points:
+        batch = max(n_points - count, 256)
+        t_cand = rng.uniform(0, 2 * np.pi, batch)
+        accept_prob = (R + r * np.cos(t_cand)) / (R + r)
+        mask = rng.uniform(size=batch) < accept_prob
+        accepted = t_cand[mask]
+        take = min(len(accepted), n_points - count)
+        theta[count : count + take] = accepted[:take]
+        count += take
+
     phi = rng.uniform(0, 2 * np.pi, n_points)
     pts = np.column_stack([
         (R + r * np.cos(theta)) * np.cos(phi),
