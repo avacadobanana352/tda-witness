@@ -535,7 +535,6 @@ def plot_barcode(
               facecolor=_GRID, edgecolor="none", labelcolor=_TEXT)
 
     plt.tight_layout()
-    plt.show()
     return fig
 
 
