@@ -50,9 +50,17 @@ fig = plot_filtration(data, thresholds=np.linspace(0.1, 0.5, 20), seed=42)
 fig.show()
 ```
 
-## MNIST: Classifying Digits by Topology
+## MNIST: Topological Features of Digits
 
-A "0" has one hole. A "1" has none. An "8" has two. With just $\beta_1$ (loop count), we can classify handwritten digits — no training needed.
+Handwritten digits fall into three topological classes by $\beta_1$ (loop count):
+
+| $\beta_1$ | Digits |
+|:---------:|--------|
+| 0 | 1, 2, 3, 5, 7 |
+| 1 | 0, 4, 6, 9 |
+| 2 | 8 |
+
+Topology can't distinguish *within* a group — a 0 and a 4 are topologically identical. But $\beta_1$ is a robust, training-free feature that's invariant to stretching and noise.
 
 ```python
 # convert a 28x28 digit image to a point cloud
@@ -63,7 +71,7 @@ result = analyze(point_cloud, threshold=1.5, n_landmarks=40, normalize=False)
 print(result["betti"])  # [1, 2] for an "8" — one component, two loops
 ```
 
-Gets **76% accuracy** over 200 test samples with zero training. See the full example: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/avacadobanana352/tda-witness/blob/main/examples/mnist_topology.ipynb)
+See the full example: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/avacadobanana352/tda-witness/blob/main/examples/mnist_topology.ipynb)
 
 ## CLI
 
