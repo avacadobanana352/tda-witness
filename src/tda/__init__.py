@@ -16,9 +16,8 @@ Quick start::
 from __future__ import annotations
 
 import numpy as np
-from scipy.spatial.distance import cdist
 
-from tda.preprocessing import normalize_data, get_landmarks
+from tda.preprocessing import normalize_data, get_landmarks, pairwise_distances
 from tda.complex.witness import build_witness_graph
 from tda.complex.vietoris_rips import compute_vr_complex
 from tda.complex.filtration import build_filtration
@@ -103,7 +102,7 @@ def analyze(
     landmarks = get_landmarks(data, n_landmarks, rng=rng)
 
     # Distance from landmarks to all points
-    distances = cdist(data[landmarks], data, metric="euclidean")
+    distances = pairwise_distances(data[landmarks], data)
 
     # Build simplicial complex
     graph = build_witness_graph(distances, threshold, witness_param)
@@ -194,7 +193,7 @@ def persistent_homology(
     rng = np.random.default_rng(seed)
     landmarks = get_landmarks(data, n_landmarks, rng=rng)
 
-    distances = cdist(data[landmarks], data, metric="euclidean")
+    distances = pairwise_distances(data[landmarks], data)
 
     simplices, birth_times, dimensions = build_filtration(
         distances, witness_param, simplex_dim,

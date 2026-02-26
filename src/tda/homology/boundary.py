@@ -41,17 +41,29 @@ def compute_boundary_matrix(
     # Build face lookup: tuple(face) -> row index
     face_lookup = {tuple(row): idx for idx, row in enumerate(faces)}
 
-    boundary_matrix = np.zeros((n_faces, n_simplices), dtype=int)
+    # Pre-compute signs: (-1)^drop_pos
+    signs = np.array([(-1) ** p for p in range(k)], dtype=int)
 
-    # For each simplex, generate its k faces by dropping one vertex at a time.
-    # This is O(n_simplices * k) instead of the original O(n_faces * n_simplices).
+    # Build COO-style sparse entries, then scatter into dense matrix
+    row_idx = np.empty(n_simplices * k, dtype=int)
+    col_idx = np.empty(n_simplices * k, dtype=int)
+    vals = np.empty(n_simplices * k, dtype=int)
+    count = 0
+
     for j in range(n_simplices):
         simplex = simplices[j]
         for drop_pos in range(k):
-            face_key = tuple(np.delete(simplex, drop_pos))
+            # Build face key without np.delete (avoid array allocation)
+            face_key = tuple(simplex[:drop_pos]) + tuple(simplex[drop_pos + 1:])
             face_idx = face_lookup.get(face_key)
             if face_idx is not None:
-                boundary_matrix[face_idx, j] = (-1) ** (drop_pos % 2)
+                row_idx[count] = face_idx
+                col_idx[count] = j
+                vals[count] = signs[drop_pos]
+                count += 1
+
+    boundary_matrix = np.zeros((n_faces, n_simplices), dtype=int)
+    boundary_matrix[row_idx[:count], col_idx[:count]] = vals[:count]
 
     return boundary_matrix
 

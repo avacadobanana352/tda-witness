@@ -3,16 +3,16 @@
 import math
 import numpy as np
 import pytest
-from scipy.spatial.distance import cdist
 
 from tda.complex.filtration import build_filtration
 from tda.homology.persistence import compute_persistence, pairs_to_barcodes
+from tda.preprocessing import pairwise_distances
 from tda import persistent_homology
 
 
 def _run_persistence(data, simplex_dim=2, witness_param=1):
     """Helper: run persistence on raw data (all points as landmarks)."""
-    distances = cdist(data, data, metric="euclidean")
+    distances = pairwise_distances(data, data)
     simplices, births, dims = build_filtration(distances, witness_param, simplex_dim)
     return compute_persistence(simplices, births, dims)
 

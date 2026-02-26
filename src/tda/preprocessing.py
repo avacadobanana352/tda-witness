@@ -3,7 +3,28 @@
 from __future__ import annotations
 
 import numpy as np
-from scipy.spatial.distance import cdist
+
+
+def pairwise_distances(A: np.ndarray, B: np.ndarray) -> np.ndarray:
+    """Compute pairwise Euclidean distances between rows of *A* and *B*.
+
+    Equivalent to ``scipy.spatial.distance.cdist(A, B, 'euclidean')``
+    but uses only numpy (avoids scipy version conflicts in Colab).
+
+    Parameters
+    ----------
+    A : np.ndarray, shape (m, d)
+    B : np.ndarray, shape (n, d)
+
+    Returns
+    -------
+    np.ndarray, shape (m, n)
+    """
+    A_sq = np.sum(A ** 2, axis=1)
+    B_sq = np.sum(B ** 2, axis=1)
+    dist_sq = A_sq[:, None] + B_sq[None, :] - 2.0 * (A @ B.T)
+    np.maximum(dist_sq, 0.0, out=dist_sq)
+    return np.sqrt(dist_sq)
 
 
 def normalize_data(data: np.ndarray) -> np.ndarray:
@@ -72,7 +93,7 @@ def get_landmarks(
         rng = np.random.default_rng()
 
     n_points = data.shape[0]
-    distances = cdist(data, data, metric="euclidean")
+    distances = pairwise_distances(data, data)
 
     landmarks = np.empty(n_landmarks, dtype=int)
     landmarks[0] = rng.integers(0, n_points)

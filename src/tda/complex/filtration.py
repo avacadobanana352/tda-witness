@@ -52,23 +52,19 @@ def build_filtration(
     else:
         witness_threshold = np.zeros(n_witnesses)
 
-    # --- Compute edge birth times ---
-    # For edge (a,b), birth = min over witnesses i of:
-    #   max(D[a,i], D[b,i]) - m[i]
-    # Clamped to >= 0.
-    edge_births: dict[tuple[int, int], float] = {}
-    full_graph = np.zeros((n_landmarks, n_landmarks), dtype=int)
+    # --- Compute edge birth times (vectorized) ---
+    # For edge (a,b), birth = max(0, min_i(max(D[a,i], D[b,i]) - m[i]))
+    # Compute all at once: max_dists[a, b, i] = max(D[a,i], D[b,i])
+    max_dists = np.maximum(
+        distances[:, None, :],  # (L, 1, W)
+        distances[None, :, :],  # (1, L, W)
+    )  # (L, L, W)
+    effective = max_dists - witness_threshold[None, None, :]  # (L, L, W)
+    edge_birth_matrix = np.maximum(np.min(effective, axis=2), 0.0)  # (L, L)
 
-    for a, b in combinations(range(n_landmarks), 2):
-        max_dists = np.maximum(distances[a, :], distances[b, :])
-        effective = max_dists - witness_threshold
-        birth = float(np.min(effective))
-        birth = max(birth, 0.0)
-        edge_births[(a, b)] = birth
-        full_graph[a, b] = 1
-        full_graph[b, a] = 1
-
-    # --- Build full VR complex on the complete witness graph ---
+    # --- Build full VR complex on the complete landmark graph ---
+    full_graph = np.ones((n_landmarks, n_landmarks), dtype=int)
+    np.fill_diagonal(full_graph, 0)
     complex_, achieved_dim = compute_vr_complex(full_graph, max_dim)
 
     # --- Assign birth times to all simplices ---
@@ -82,12 +78,12 @@ def build_filtration(
         all_births.append(0.0)
         all_dims.append(0)
 
-    # Edges: use pre-computed birth times
+    # Edges: read from the birth matrix
     if len(complex_) > 1:
         for edge in complex_[1]:
-            key = (int(min(edge)), int(max(edge)))
-            all_simplices.append(tuple(int(x) for x in sorted(edge)))
-            all_births.append(edge_births[key])
+            a, b = int(min(edge)), int(max(edge))
+            all_simplices.append((a, b))
+            all_births.append(float(edge_birth_matrix[a, b]))
             all_dims.append(1)
 
     # Higher simplices: birth = max edge birth among all edges in the simplex
@@ -96,8 +92,7 @@ def build_filtration(
             simplex_sorted = tuple(int(x) for x in sorted(simplex))
             max_edge_birth = 0.0
             for a, b in combinations(simplex_sorted, 2):
-                key = (min(a, b), max(a, b))
-                max_edge_birth = max(max_edge_birth, edge_births[key])
+                max_edge_birth = max(max_edge_birth, float(edge_birth_matrix[a, b]))
             all_simplices.append(simplex_sorted)
             all_births.append(max_edge_birth)
             all_dims.append(d)

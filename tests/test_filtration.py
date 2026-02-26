@@ -1,15 +1,15 @@
 """Tests for tda.complex.filtration."""
 
 import numpy as np
-from scipy.spatial.distance import cdist
 
 from tda.complex.filtration import build_filtration
+from tda.preprocessing import pairwise_distances
 
 
 class TestBuildFiltration:
     def _distances(self, data):
         """All points are landmarks."""
-        return cdist(data, data, metric="euclidean")
+        return pairwise_distances(data, data)
 
     def test_vertices_born_at_zero(self):
         data = np.array([[0, 0], [1, 0], [0.5, 0.866]], dtype=float)

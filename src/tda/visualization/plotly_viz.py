@@ -282,8 +282,7 @@ def plot_filtration(
     plotly.graph_objects.Figure
     """
     go = _import_plotly()
-    from scipy.spatial.distance import cdist
-    from tda.preprocessing import normalize_data, get_landmarks
+    from tda.preprocessing import normalize_data, get_landmarks, pairwise_distances
     from tda.complex.witness import build_witness_graph
     from tda.complex.vietoris_rips import compute_vr_complex
     from tda.homology.boundary import compute_boundary_matrices
@@ -301,7 +300,7 @@ def plot_filtration(
         n_landmarks = n_points
     rng = np.random.default_rng(seed)
     landmarks = get_landmarks(data, n_landmarks, rng=rng)
-    distances = cdist(data[landmarks], data, metric="euclidean")
+    distances = pairwise_distances(data[landmarks], data)
     lm_coords = data[landmarks]
 
     # Pre-compute for each threshold

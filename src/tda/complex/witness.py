@@ -42,7 +42,6 @@ def build_witness_graph(
         raise ValueError("witness_param must be >= 0")
 
     n_landmarks, n_witnesses = distances.shape
-    graph = np.zeros((n_landmarks, n_landmarks), dtype=int)
 
     # witness_threshold[i] = v-th nearest landmark distance for witness i
     if witness_param > 0:
@@ -51,16 +50,29 @@ def build_witness_graph(
     else:
         witness_threshold = np.zeros(n_witnesses)
 
-    # Vectorized: for each witness, compute pairwise max distances and check
-    # against the threshold.  This replaces the original O(L^2 * W) Python
-    # loop with O(W) vectorized passes, each O(L^2) in NumPy C code.
-    for i in range(n_witnesses):
-        d_col = distances[:, i]  # shape (n_landmarks,)
-        max_dists = np.maximum(d_col[:, None], d_col[None, :])
-        connected = max_dists <= threshold + witness_threshold[i]
-        graph |= connected.astype(int)
+    # Fully vectorized: compute max(D[a,i], D[b,i]) for all (a, b, i) at once.
+    # effective[a, b, i] = max(D[a,i], D[b,i]) - threshold - m[i]
+    # Edge (a,b) exists iff any witness i has effective <= 0.
+    #
+    # Memory: O(L^2 * W).  For L=200, W=200 this is ~64 MB — fine for Colab.
+    # Falls back to the per-witness loop for very large inputs.
+    mem_elements = n_landmarks * n_landmarks * n_witnesses
+    if mem_elements <= 50_000_000:  # ~400 MB for float64
+        max_dists = np.maximum(
+            distances[:, None, :],  # (L, 1, W)
+            distances[None, :, :],  # (1, L, W)
+        )  # (L, L, W)
+        connected = max_dists <= threshold + witness_threshold[None, None, :]
+        graph = np.any(connected, axis=2).astype(int)
+    else:
+        # Chunked fallback for very large inputs
+        graph = np.zeros((n_landmarks, n_landmarks), dtype=int)
+        for i in range(n_witnesses):
+            d_col = distances[:, i]
+            max_dists = np.maximum(d_col[:, None], d_col[None, :])
+            connected = max_dists <= threshold + witness_threshold[i]
+            graph |= connected.astype(int)
 
     np.fill_diagonal(graph, 0)
-    # Ensure symmetry
     graph = np.maximum(graph, graph.T)
     return graph

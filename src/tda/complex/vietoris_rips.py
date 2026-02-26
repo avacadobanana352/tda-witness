@@ -5,11 +5,6 @@ from __future__ import annotations
 import numpy as np
 
 
-def _lower_neighbours(G: np.ndarray, u: int) -> np.ndarray:
-    """Return indices of vertices *j < u* connected to *u* in graph *G*."""
-    return np.where(G[:u, u] == 1)[0]
-
-
 def compute_vr_complex(
     graph: np.ndarray,
     max_dim: int,
@@ -46,28 +41,41 @@ def compute_vr_complex(
     n_points = graph.shape[0]
     achieved_dim = max_dim
 
+    # Pre-compute adjacency sets and lower-neighbor sets for fast intersection
+    adj_sets: list[set[int]] = [set() for _ in range(n_points)]
+    lower_adj: list[set[int]] = [set() for _ in range(n_points)]
+    for u in range(n_points):
+        neighbors = set(np.flatnonzero(graph[u]).tolist())
+        neighbors.discard(u)
+        adj_sets[u] = neighbors
+        lower_adj[u] = {v for v in neighbors if v < u}
+
     # 0-simplices (vertices)
     k_skeleton: list[np.ndarray] = [np.arange(n_points).reshape(-1, 1)]
 
     for dim in range(max_dim):
-        next_level: list[np.ndarray] = []
+        next_level: list[tuple[int, ...]] = []
         prev_simplices = k_skeleton[dim]
 
-        for simplex in prev_simplices:
-            # Find vertices w < min(simplex) connected to every vertex in simplex
-            reachable = _lower_neighbours(graph, simplex[0])
-            for vertex in simplex[1:]:
-                reachable = reachable[np.isin(reachable, _lower_neighbours(graph, vertex))]
+        for row in prev_simplices:
+            simplex = row.tolist()
+            # Candidates: vertices < simplex[0] connected to every vertex in simplex
+            candidates = lower_adj[simplex[0]].copy()
+            for v in simplex[1:]:
+                candidates &= adj_sets[v]
+                if not candidates:
+                    break
 
-            for new_vertex in reachable:
-                next_level.append(np.sort(np.append(simplex, new_vertex)))
+            for new_vertex in candidates:
+                next_level.append(tuple(sorted([new_vertex] + simplex)))
 
         if not next_level:
             achieved_dim = dim
             return k_skeleton, achieved_dim
 
-        next_array = np.unique(np.array(next_level), axis=0)
-        sort_idx = np.argsort(next_array[:, 0], kind="stable")
-        k_skeleton.append(next_array[sort_idx])
+        # Deduplicate (each simplex is generated exactly once by construction,
+        # but use a set for safety) and sort
+        unique = sorted(set(next_level))
+        k_skeleton.append(np.array(unique, dtype=int))
 
     return k_skeleton, achieved_dim
